@@ -1,0 +1,52 @@
+const SignupData = require("../models/userModel");
+const bcrypt = require("bcrypt");
+// Signup handler
+exports.signup = async (req, res) => {
+  console.log("Received signup data:", req.body); // Add this line
+  try {
+    const signupData = new SignupData({
+      first_Name: req.body.firstName,
+      middle_Name: req.body.middleName,
+      last_Name: req.body.lastName,
+      email: req.body.email,
+      re_enter_email: req.body.reEnterEmail,
+      password: req.body.password,
+      confirm_password: req.body.confirmPassword,
+      dob: req.body.dob,
+      department: req.body.department,
+    });
+
+    const token = await signupData.generateAuthToken();
+    await signupData.save();
+    res.status(201).send({ message: "User signed up successfully" });
+  } catch (error) {
+    console.error("Error in signup handler:", error); // Add this line
+    res.status(500).send({ message: `Error: ${error.message}` });
+  }
+};
+
+// Login handler
+exports.login = async (req, res) => {
+  console.log("Received login data:", req.body); // Add this line
+  try {
+    const { email, password } = req.body;
+    const user = await SignupData.findOne({ email });
+
+    if (!user) {
+      return res.status(400).send({ message: "Invalid email or password" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log(isPasswordValid);
+    if (!isPasswordValid) {
+      return res.status(400).send({ message: "Invalid email or password" });
+    }
+
+    const token = await user.generateAuthToken();
+    res.cookie("jwt_login_cookie", token, { httpOnly: true });
+    res.status(200).send({ message: "Login successful" });
+    console.log("Login successful");
+  } catch (error) {
+    res.status(500).send({ message: "Server error" });
+  }
+};
